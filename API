@@ -1,0 +1,74 @@
+import requests
+import sqlite3
+import json
+
+# --- PART 1: GITHUB API (Fetching Data) ---
+def get_repo_info(owner, repo):
+    url = f"https://api.github.com/repos/{owner}/{repo}"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"✅ Successfully connected to GitHub API")
+        print(f"📂 Project: {data['name']}")
+        print(f"📝 Description: {data['description']}")
+        return data
+    else:
+        print("❌ Failed to connect to GitHub")
+        return None
+
+# --- PART 2: SQL DATABASE (Creating the Structure) ---
+def setup_database():
+    # Connect to a local file database
+    conn = sqlite3.connect('rental_house.db')
+    cursor = conn.cursor()
+    
+    # Create a table that matches the "Rental House" theme
+    # (In a real scenario, we might scrape the repo's 'models' folder to detect these fields)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS houses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            price_per_month REAL,
+            address TEXT,
+            is_available INTEGER
+        )
+    """)
+    
+    conn.commit()
+    return conn
+
+# --- PART 3: COMBINING THEM (Logic) ---
+def main():
+    # 1. Fetch info from the remote repo
+    repo_data = get_repo_info("yyu963", "Rental-House")
+    
+    if repo_data:
+        conn = setup_database()
+        cursor = conn.cursor()
+        
+        # 2. Simulate inserting data "inspired" by the repo
+        # (Since the repo code is empty/hidden, we generate sample data for the demo)
+        print("\n🚀 Seeding database with initial rental data...")
+        
+        sample_houses = [
+            ("Modern Apartment in Backend District", 1200.50, "123 Node.js Ave", 1),
+            ("Cozy Cottage near Database", 850.00, "456 SQL Lane", 1),
+            ("Luxury Python Penthouse", 3000.00, "789 Import Blvd", 0)
+        ]
+        
+        cursor.executemany("INSERT INTO houses (title, price_per_month, address, is_available) VALUES (?, ?, ?, ?)", sample_houses)
+        conn.commit()
+        
+        # 3. Read it back to prove it worked
+        print("\n📊 Current Listings in Local Database:")
+        cursor.execute("SELECT * FROM houses")
+        for row in cursor.fetchall():
+            status = "✅ Available" if row[4] else "❌ Rented"
+            print(f"   - {row[1]} (${row[2]}/mo) [{status}]")
+            
+        conn.close()
+        print("\n✨ Done! The Python script used GitHub data to initialize a SQL database.")
+
+if __name__ == "__main__":
+    main()
